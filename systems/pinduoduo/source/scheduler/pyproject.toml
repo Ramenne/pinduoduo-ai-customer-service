@@ -1,0 +1,51 @@
+# pyproject.toml —— scheduler 定时任务服务依赖与打包配置
+# ======================================================
+# 本文件用途：声明「拼多多自动回复」系统 scheduler 服务的依赖与打包元数据。
+# scheduler 为独立后端服务（默认端口 8091），入口 main.py（最小桩）+ _bootstrap.py（装配）。
+# common 公共库通过 sys.path 共享引用（非通过本依赖安装），与 backend / websocket 一致。
+#
+# 规范 33：打包时易出现「检测到多个顶级目录」错误，故在 [tool.setuptools] 中
+# 显式声明 packages 列表（本服务的 tasks 包），不依赖自动发现。
+
+[project]
+name = "pdd-auto-reply-scheduler"
+version = "0.1.0"
+description = "拼多多自动回复系统 - scheduler 定时任务服务（Cookie 刷新 / 商品同步 / 文件日志清理）"
+requires-python = ">=3.11"
+
+# 运行期依赖：
+# - fastapi / uvicorn[standard]：HTTP 服务与 ASGI 运行时（提供 /health 与内部触发接口）；
+# - apscheduler：定时任务调度库（按 scheduled_task 配置周期调度）；
+# - PyMySQL / SQLAlchemy：MySQL 连接与参数化查询（写执行日志 task_run_log，规范 8/16）；
+# - aiohttp：跨服务 HTTP 调用 websocket / backend（地址经环境变量，规范 21）；
+# - pydantic / pydantic-settings：数据结构校验与环境变量配置加载；
+# - python-dateutil：北京时间相关的日期计算辅助（规范 17）。
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "apscheduler>=3.10.0",
+    "PyMySQL>=1.1.0",
+    "SQLAlchemy>=2.0.0",
+    "aiohttp>=3.9.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "python-dateutil>=2.8.0",
+]
+
+# 可选依赖：测试相关（属性测试统一采用 Hypothesis，最少 100 次迭代）。
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0",
+    "hypothesis>=6.90.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+# 显式声明 packages 列表（规范 33）：声明本服务的 tasks 包，
+# 避免自动发现时报「检测到多个顶级目录」打包错误。
+[tool.setuptools]
+packages = [
+    "tasks",
+]

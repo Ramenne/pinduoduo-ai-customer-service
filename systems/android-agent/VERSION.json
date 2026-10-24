@@ -1,0 +1,8 @@
+{
+  "version_code": 66,
+  "version_name": "0.19.3-v01",
+  "source_basis": "current worktree including tracked changes and untracked implementation; not Git HEAD alone",
+  "public_apk_sha256": "bfdf6caf4aaca3f441cb6cd9c49a8946c57a4acfbbfe2cdd818cce8e6280efc6",
+  "cloud_runtime_source_hash_verified": false,
+  "database": "SQLite development + PostgreSQL production schemas/migrations"
+}

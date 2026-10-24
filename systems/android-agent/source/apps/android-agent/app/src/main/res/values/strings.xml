@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">OIN</string>
+    <string name="accessibility_description">让 OIN 读取界面结构并执行经过授权的白名单操作。</string>
+</resources>

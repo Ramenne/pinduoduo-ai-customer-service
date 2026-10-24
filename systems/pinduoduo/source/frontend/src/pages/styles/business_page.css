@@ -1,0 +1,310 @@
+/* 业务页面通用样式（任务 17.4 知识库/AI/营业时间/过滤黑名单/风控/转人工等页面共用）
+ * 抽取页面骨架、工具栏、表格、弹窗、表单的统一样式，避免在各页面重复编写（规范 36）。
+ * 颜色全部经主题 CSS 变量取值，保证暗黑模式与主题色一致、文字与背景对比清晰（规范 24/25/26）。
+ */
+
+/* ===== 页面骨架：纵向 flex，使表格区占据剩余空间并内部滚动（规范 29） ===== */
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.page__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 6px;
+}
+
+.page__desc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 16px;
+}
+
+/* ===== 操作栏 ===== */
+.page__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.page__input {
+  height: 36px;
+  padding: 0 12px;
+  font-size: 14px;
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  min-width: 200px;
+}
+
+.page__input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* ===== 表格容器（占据剩余高度，内部相对定位以承载加载遮罩） ===== */
+.page__table-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 200px;
+}
+
+/* ===== 数据表格 ===== */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+
+.data-table thead th {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.data-table .empty {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 32px 0;
+}
+
+.col-actions {
+  white-space: nowrap;
+  width: 1%;
+}
+
+/* ===== 状态徽标 ===== */
+.status {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 12px;
+  border-radius: 10px;
+}
+
+.status--on {
+  color: #15a97c;
+  background: rgba(21, 169, 124, 0.12);
+}
+
+.status--off {
+  color: #8c8c8c;
+  background: rgba(140, 140, 140, 0.12);
+}
+
+/* ===== 行内文字按钮 ===== */
+.link {
+  background: none;
+  border: none;
+  padding: 0 6px;
+  font-size: 14px;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.link--danger {
+  color: #e53935;
+}
+
+/* ===== 普通按钮 ===== */
+.btn {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 14px;
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  color: var(--color-on-primary);
+}
+
+/* ===== 表单卡片（用于营业时间/风控/AI 等单店铺配置页） ===== */
+.config-card {
+  max-width: 720px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 8px;
+}
+
+/* ===== 表单字段 ===== */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.field__label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.field__input,
+.field__textarea {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-family: inherit;
+}
+
+.field__input:focus,
+.field__textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.field__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.field__textarea {
+  resize: vertical;
+}
+
+.field--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.field--inline .field__label {
+  margin: 0;
+}
+
+/* ===== 自定义弹窗（新增/编辑），仅关闭按钮关闭（规范 7：遮罩不可关闭） ===== */
+.modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 100001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay {
+  z-index: 0;
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+
+.modal-dialog {
+  z-index: 1;
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  max-height: 86vh;
+  overflow: auto;
+  margin: 0 16px;
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  padding: 20px 24px;
+}
+
+.modal-x {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.modal-x:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.modal-body {
+  margin-bottom: 8px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+
+/* ===== 响应式（移动端适配，规范 20） ===== */
+@media (max-width: 767px) {
+  .page__toolbar {
+    gap: 8px;
+  }
+  .page__input {
+    min-width: 140px;
+    flex: 1;
+  }
+  .config-card {
+    padding: 16px;
+  }
+}

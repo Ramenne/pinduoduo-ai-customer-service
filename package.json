@@ -1,0 +1,10 @@
+{
+  "name": "pinduoduo-ai-customer-service",
+  "private": true,
+  "scripts": {
+    "demo": "node demo/server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

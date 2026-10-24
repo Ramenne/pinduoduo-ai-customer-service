@@ -1,0 +1,47 @@
+<div id="seller" data-api="@@API@@" data-csrf="@@CSRF@@" data-update-api="@@UPDATE_API@@">
+<div class="workspace-hero"><div><div class="eyebrow">OIN · 工作端</div><h1>闲鱼助手</h1><p>整理上新资料，管理每天的浏览与商品维护</p></div></div>
+<div hidden><b id="count-items"></b><b id="count-active"></b><b id="count-review"></b></div>
+<p id="notice" role="status" aria-live="polite"></p>
+<section class="control-panel" id="current-task"><div class="section-head"><h2>任务结果与恢复</h2><span id="current-state" class="status">正在读取</span></div><div class="control-body"><h3 id="current-name">加载任务状态…</h3><p hidden id="current-phase" class="phase-label"></p><p hidden id="current-step" class="current-action"></p><p id="current-reason" class="task-reason"></p><div hidden class="progress-line"><progress id="current-progress" max="1" value="0"></progress><span id="current-count"></span></div><button id="pause-current" hidden>暂停任务</button><button id="continue-current" hidden>继续这次任务</button><button id="stop-current" hidden>结束任务</button><button id="retry-current" hidden>重试</button><button id="details-current" hidden>故障详情与记录</button><button id="cancel-current" hidden>取消排队</button><div hidden id="stage-progress" class="stage-progress"></div></div></section>
+<section class="control-panel" id="task-center"><div class="section-head"><h2 id="task-section-title">每日安排</h2></div>
+<div id="task-sections" class="task-sections" role="group" aria-label="任务类型"></div>
+<div class="control-body" id="task-sheet"><p id="section-summary" class="muted"></p><p id="section-progress" class="muted"></p>
+<div id="publish-research" hidden><h3>上新调研与整理</h3><p>先收集同类商品、货源与真实商品信息，再与AI整理标题、描述、图片方案和定价。此处不创建自动发布任务。</p><p>下方“商品资料”可保存整理结果。</p></div><div id="automation-controls"><label id="workflow-label" for="workflow-choice">执行方案</label><select id="workflow-choice"></select><ol hidden id="plan-preview" class="plan-preview"></ol><div id="builtin-tasks" hidden></div><div id="task-rows" hidden></div><h3 id="selected-task-name" hidden></h3>
+<p>手机开始后会进入闲鱼。结束后回来查看成功或未完成；中断可继续或重新运行。</p><details><summary>机制说明</summary><p id="workflow-boundary" class="boundary"></p></details>
+<div id="material-choice"><label for="selected-item">使用的商品素材</label><select id="selected-item"><option value="">请选择商品素材</option></select></div>
+<label id="authorization"><input id="authorize" type="checkbox">确认素材和目标，执行所选流程</label><p id="task-feedback" role="status" aria-live="polite"></p>
+<button id="run">开始任务</button><button id="resume-task" hidden>核对上次提交</button></div></div></section>
+<button id="product-data">商品数据</button>
+<section class="control-panel" id="execution"><details><summary>任务记录</summary><div id="jobs"></div></details></section>
+<section class="card" id="materials"><details><summary>商品资料 · 整理和保存</summary><p class="muted">保存的是 OIN 素材，不等于已发布到闲鱼。</p>
+<form id="item-form"><label for="title">标题</label><input id="title" required maxlength="120">
+<label for="description">描述</label><textarea id="description" rows="5" required maxlength="5000" style="width:100%"></textarea>
+<label for="price">价格</label><input id="price" type="number" min="0.01" step="0.01" required>
+<label for="images">商品图片（最多9张）</label><input id="images" type="file" accept="image/jpeg,image/png" multiple>
+<p class="muted">图片会缩放压缩至每张256 KiB内，再验证摘要后导入手机相册。</p>
+<button>保存商品</button></form><div id="items"></div></details></section>
+<section class="card" id="device-tools"><details><summary>设备设置与高级调研</summary><p id="device-version" class="muted"></p><button id="check-update">检查手机应用更新</button><p id="update-notice" class="muted"></p><details><summary>高级工具 · 手机页面调研</summary>
+<button id="launch">打开并读取闲鱼</button><button id="observe">读取当前页面</button>
+<button id="phone-back">手机返回并读取</button>
+<label for="recipe-kind">用途</label><select id="recipe-kind"><option value="publish">上新</option><option value="edit">编辑优化</option><option value="brighten">擦亮</option><option value="metrics">每日数据观察</option><option value="reply">人工确定的回复</option><option value="research">同行观察</option></select>
+<label for="recipe-name">流程名称</label><input id="recipe-name" placeholder="按这个手机的实页配置" maxlength="100">
+<div id="nodes" style="max-height:340px;overflow:auto"></div>
+<details><summary>高级调研：流程录制（普通任务无需配置）</summary>
+<p class="muted">点击节点的“作为校验”可加入精确页面锚点；“点击”和“输入”可录入动作。发布/发送/保存按钮务必标为“不可逆”，后接至少两个实页校验（页面＋商品/会话）。</p>
+<label><input id="commit" type="checkbox" style="width:auto">下一个点击是不可逆动作（发布/发送/保存等）</label>
+<label for="input-value">输入模板</label><input id="input-value" placeholder="{{title}} / {{description}} / {{price}} / {{reply}}">
+<label for="image-index">导入商品第几张图</label><input id="image-index" type="number" min="1" max="9" value="1"><button id="add-image">加入图片导入步骤</button>
+<button id="new-read">加入下一次页面校验</button><button id="reset-recipe">清空流程</button>
+<details><summary>当前步骤（可修改JSON）</summary><textarea id="steps" rows="12" style="width:100%;font-family:monospace"></textarea></details>
+<button id="save-recipe">保存流程</button></details></details>
+<details><summary>高级工具 · 定时维护与自定义流程</summary><div id="schedules"></div><div class="grid">
+<div><label for="selected-recipe">流程</label><select id="selected-recipe"></select></div>
+<div><label for="reply">本次回复内容（回复流程）</label><textarea id="reply" rows="3" style="width:100%"></textarea></div></div>
+<button id="run-research">执行一次调研/数据读取</button>
+<button id="schedule">每天运行（仅擦亮/数据观察）</button>
+<p class="muted">不会自动刷浏览、收藏、评论、下单或删后重发。</p></details></details></section>
+</div>
+
+<dialog id="record-dialog" class="record-dialog"><div class="record-header"><div><p class="eyebrow">执行记录</p><h2 id="record-title">任务详情</h2></div><button id="close-record" class="quiet" aria-label="关闭执行记录">×</button></div><p id="record-state" class="muted"></p><div id="step-details"></div></dialog>
+
+<dialog id="product-dialog" class="record-dialog"><div class="record-header"><h2>商品数据</h2><button id="close-products" aria-label="关闭商品数据">×</button></div><p id="product-state"></p><div id="product-rows"></div></dialog>

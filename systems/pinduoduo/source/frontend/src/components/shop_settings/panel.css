@@ -1,0 +1,196 @@
+/* 店铺设置弹窗内各面板的通用样式（规范 36：抽取公共样式避免重复）
+ * 颜色经主题 CSS 变量取值，兼容暗黑模式与主题色（规范 24/25/26）。
+ */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.panel__desc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 14px;
+}
+
+/* 面板主体：相对定位以承载区域加载遮罩 */
+.panel__body {
+  position: relative;
+  min-height: 80px;
+}
+
+.panel__actions {
+  margin-top: 4px;
+  display: flex;
+  gap: 12px;
+}
+
+/* ===== 表单字段 ===== */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.field__label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.field__input,
+.field__textarea {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.field__input:focus,
+.field__textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.field__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.field__textarea {
+  resize: vertical;
+}
+
+.field--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.field--inline .field__label {
+  margin: 0;
+}
+
+/* ===== 按钮 ===== */
+.btn {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 14px;
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  color: var(--color-on-primary);
+}
+
+/* ===== 数据表格 ===== */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+
+.data-table thead th {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.data-table .empty {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 28px 0;
+}
+
+.col-actions {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.data-table__content {
+  max-width: 280px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* ===== 状态徽标 ===== */
+.status {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 12px;
+  border-radius: 10px;
+}
+
+.status--on {
+  color: #15a97c;
+  background: rgba(21, 169, 124, 0.12);
+}
+
+.status--off {
+  color: #8c8c8c;
+  background: rgba(140, 140, 140, 0.12);
+}
+
+/* ===== 行内文字按钮 ===== */
+.link {
+  background: none;
+  border: none;
+  padding: 0 6px;
+  font-size: 14px;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.link--danger {
+  color: #e53935;
+}
+
+/* ===== 面板内的工具栏（新增按钮等） ===== */
+.panel__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}

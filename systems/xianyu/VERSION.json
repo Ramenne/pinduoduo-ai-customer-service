@@ -1,0 +1,6 @@
+{
+  "system": "xianyu",
+  "source_basis": "FF_running_source_20261023",
+  "production_rows_included": false,
+  "dependencies": "production observed versions; network installation required"
+}

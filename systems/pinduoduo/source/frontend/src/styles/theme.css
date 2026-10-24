@@ -1,0 +1,168 @@
+/* 主题色变量：拼多多自动回复系统前端
+ * 设计目标（规范 25/26）：
+ *   1. 蓝白主色调，支持暗黑模式与主题色修改；
+ *   2. 主色以 RGB 三元组（空格分隔）形式提供给 Tailwind 的 primary 调色板，
+ *      Tailwind 通过 rgb(var(--theme-primary-500) / <alpha-value>) 消费，
+ *      故切换主题色时只需改写这些变量即可让全站 primary 工具类联动；
+ *   3. 默认蓝色系（Blue），data-theme-color 可切换其它预设。
+ */
+
+:root {
+  /* 默认主题色：海洋蓝（Tailwind blue 色阶的 RGB 三元组） */
+  --theme-primary-50: 239 246 255;
+  --theme-primary-100: 219 234 254;
+  --theme-primary-200: 191 219 254;
+  --theme-primary-300: 147 197 253;
+  --theme-primary-400: 96 165 250;
+  --theme-primary-500: 59 130 246;
+  --theme-primary-600: 37 99 235;
+  --theme-primary-700: 29 78 216;
+  --theme-primary-800: 30 64 175;
+  --theme-primary-900: 30 58 138;
+}
+
+/* ===== 主题色预设（规范 26：系统支持主题颜色修改） ===== */
+/* 海洋蓝（默认） */
+html[data-theme-color='blue'] {
+  --theme-primary-50: 239 246 255;
+  --theme-primary-100: 219 234 254;
+  --theme-primary-200: 191 219 254;
+  --theme-primary-300: 147 197 253;
+  --theme-primary-400: 96 165 250;
+  --theme-primary-500: 59 130 246;
+  --theme-primary-600: 37 99 235;
+  --theme-primary-700: 29 78 216;
+  --theme-primary-800: 30 64 175;
+  --theme-primary-900: 30 58 138;
+}
+
+/* 翡翠绿 */
+html[data-theme-color='green'] {
+  --theme-primary-50: 236 253 245;
+  --theme-primary-100: 209 250 229;
+  --theme-primary-200: 167 243 208;
+  --theme-primary-300: 110 231 183;
+  --theme-primary-400: 52 211 153;
+  --theme-primary-500: 16 185 129;
+  --theme-primary-600: 5 150 105;
+  --theme-primary-700: 4 120 87;
+  --theme-primary-800: 6 95 70;
+  --theme-primary-900: 6 78 59;
+}
+
+/* 雾感紫 */
+html[data-theme-color='purple'] {
+  --theme-primary-50: 245 243 255;
+  --theme-primary-100: 237 233 254;
+  --theme-primary-200: 221 214 254;
+  --theme-primary-300: 196 181 253;
+  --theme-primary-400: 167 139 250;
+  --theme-primary-500: 139 92 246;
+  --theme-primary-600: 124 58 237;
+  --theme-primary-700: 109 40 217;
+  --theme-primary-800: 91 33 182;
+  --theme-primary-900: 76 29 149;
+}
+
+/* 落日橙 */
+html[data-theme-color='orange'] {
+  --theme-primary-50: 255 247 237;
+  --theme-primary-100: 255 237 213;
+  --theme-primary-200: 254 215 170;
+  --theme-primary-300: 253 186 116;
+  --theme-primary-400: 251 146 60;
+  --theme-primary-500: 249 115 22;
+  --theme-primary-600: 234 88 12;
+  --theme-primary-700: 194 65 12;
+  --theme-primary-800: 154 52 18;
+  --theme-primary-900: 124 45 18;
+}
+
+/* 玫瑰红 */
+html[data-theme-color='red'] {
+  --theme-primary-50: 254 242 242;
+  --theme-primary-100: 254 226 226;
+  --theme-primary-200: 254 202 202;
+  --theme-primary-300: 252 165 165;
+  --theme-primary-400: 248 113 113;
+  --theme-primary-500: 239 68 68;
+  --theme-primary-600: 220 38 38;
+  --theme-primary-700: 185 28 28;
+  --theme-primary-800: 153 27 27;
+  --theme-primary-900: 127 29 29;
+}
+
+/* ===== 语义化 CSS 变量（兼容业务页面既有样式） =====
+ * 说明：布局外壳与新页面已迁移到 Tailwind 设计系统；为保持其余业务页面（仍使用
+ * var(--color-*) 的 scoped 样式）与新风格在配色上保持一致，这里以 slate 中性色 +
+ * primary 主色为基准重新定义语义变量，并随暗黑模式切换。主色相关变量复用主题色
+ * RGB 三元组（--theme-primary-*），从而与主题色切换联动（规范 25/26）。
+ */
+:root {
+  /* 主色（来自主题色三元组，随主题色预设联动） */
+  --color-primary: rgb(var(--theme-primary-500));
+  --color-primary-hover: rgb(var(--theme-primary-600));
+  --color-primary-active: rgb(var(--theme-primary-700));
+  --color-primary-light: rgb(var(--theme-primary-50));
+  --color-on-primary: #ffffff;
+
+  /* 背景与表面（slate-50 / white） */
+  --color-bg: #f8fafc;
+  --color-bg-elevated: #ffffff;
+  --color-sidebar-bg: #ffffff;
+  --color-header-bg: #ffffff;
+
+  /* 文字（slate-800 / slate-500） */
+  --color-text: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-inverse: #ffffff;
+
+  /* 边框（slate-200） */
+  --color-border: #e2e8f0;
+
+  /* 悬浮态背景（slate-100） */
+  --color-hover-bg: #f1f5f9;
+
+  /* 遮罩层 */
+  --color-mask: rgba(15, 23, 42, 0.5);
+
+  /* 阴影 */
+  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-popover: 0 8px 24px rgba(15, 23, 42, 0.12);
+
+  /* 布局尺寸（保留兼容） */
+  --layout-sidebar-width: 224px;
+  --layout-sidebar-collapsed-width: 64px;
+  --layout-header-height: 56px;
+  --layout-tabs-height: 40px;
+
+  /* 字体族 */
+  --app-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* 暗黑模式语义变量（slate-900 / slate-800 体系，与 Tailwind dark 变体一致） */
+.dark {
+  --color-primary: rgb(var(--theme-primary-400));
+  --color-primary-hover: rgb(var(--theme-primary-300));
+  --color-primary-active: rgb(var(--theme-primary-500));
+  --color-primary-light: rgb(var(--theme-primary-900) / 0.4);
+
+  --color-bg: #0f172a;
+  --color-bg-elevated: #1e293b;
+  --color-sidebar-bg: #0f172a;
+  --color-header-bg: #1e293b;
+
+  --color-text: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-inverse: #0f172a;
+
+  --color-border: #334155;
+
+  --color-hover-bg: #334155;
+
+  --color-mask: rgba(0, 0, 0, 0.7);
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.55);
+}

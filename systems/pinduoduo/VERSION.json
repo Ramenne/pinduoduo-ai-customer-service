@@ -1,0 +1,11 @@
+{
+  "system": "pdd",
+  "source_basis": "local_integration_0.1.22",
+  "production_rows_included": false,
+  "dependencies": "production observed versions; network installation required",
+  "commit": "118719380c5b135b1fb0050c46819bbd4804d62a",
+  "version": "0.1.22",
+  "runtime_commit": "f3ee7b7ab8fbbb724242c3be9e30ffa9e801ee56",
+  "database_tables": 45,
+  "harness_column_included": true
+}

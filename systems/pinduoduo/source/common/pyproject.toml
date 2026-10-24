@@ -1,0 +1,55 @@
+# pyproject.toml —— common 公共库依赖与打包配置
+# ================================================
+# 本文件用途：声明「拼多多自动回复」系统 common 公共库的依赖与打包元数据。
+# common 是公共库（非独立服务），被 backend / websocket / scheduler 等
+# 各服务通过 sys.path 共享复用，因此无服务启动入口（无 main.py）。
+#
+# 规范 33：打包时易出现「检测到多个顶级目录」错误，故在 [tool.setuptools]
+# 中显式声明 packages 列表（common 及其全部子包），不依赖自动发现。
+
+[project]
+name = "pdd-auto-reply-common"
+version = "0.1.0"
+description = "拼多多自动回复系统 - common 公共库（被各服务通过 sys.path 共享）"
+requires-python = ">=3.11"
+
+# 公共库运行期依赖：
+# - PyMySQL / SQLAlchemy：MySQL 连接与参数化查询（规范 8/16）
+# - PyJWT / passlib[bcrypt]：JWT 签发校验与密码哈希（需求 1）
+# - jieba：中文分词检索（知识库 kb.search）
+# - pydantic / pydantic-settings：数据结构校验与环境变量配置加载
+dependencies = [
+    "PyMySQL>=1.1.0",
+    "SQLAlchemy>=2.0.0",
+    "PyJWT>=2.8.0",
+    "passlib[bcrypt]>=1.7.4",
+    "cryptography>=42.0.0",
+    "jieba>=0.42.1",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+]
+
+# 可选依赖：测试相关（属性测试统一采用 Hypothesis，最少 100 次迭代）
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0",
+    "hypothesis>=6.90.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+# 显式声明 packages 列表（规范 33）：声明 common 及其全部子包，
+# 避免自动发现时报「检测到多个顶级目录」打包错误。
+[tool.setuptools]
+packages = [
+    "common",
+    "common.models",
+    "common.db",
+    "common.schemas",
+    "common.services",
+    "common.utils",
+    "common.core",
+]
+package-dir = { common = "." }

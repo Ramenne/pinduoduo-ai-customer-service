@@ -1,0 +1,22 @@
+[Unit]
+Description=OIN Xianyu website and durable phone control plane
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=oin-v01
+Group=oin-v01
+WorkingDirectory=/opt/oin-v01/current
+EnvironmentFile=/etc/oin-v01/environment
+ExecStart=/opt/oin-v01/current/venv/bin/python -m oin_control_plane
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

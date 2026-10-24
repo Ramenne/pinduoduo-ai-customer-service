@@ -1,0 +1,296 @@
+# docker-compose.yml —— 拼多多自动回复系统多容器编排
+# ==============================================================================
+# 本文件用途：编排基础设施与各服务容器，按依赖顺序启动并健康自愈。
+#   服务清单：mysql / redis / backend / websocket / scheduler / frontend
+#
+# 关键约束（开发规范 17/21、需求 24.8/25.2/25.4）：
+#   1. 全链路北京时间：所有容器 TZ=Asia/Shanghai；MySQL 以
+#      --default-time-zone=+08:00 启动，字符集 utf8mb4（需求 24.8）。
+#   2. 禁止写死 localhost：服务间地址一律经环境变量配置，默认值采用
+#      docker-compose 服务名（mysql/redis/backend/websocket/scheduler），
+#      由编排网络解析（需求 25.4、规范 21）。
+#   3. 依赖顺序：backend/websocket/scheduler 依赖 mysql、redis 健康后再启动；
+#      frontend 依赖 backend 健康后再启动（depends_on + condition: service_healthy）。
+#   4. 各服务均配置 healthcheck：后端类服务探测 /health，frontend 探测首页，
+#      mysql 用 mysqladmin ping，redis 用 redis-cli ping。
+#   5. 环境变量集中在同目录 .env（参考 .env.example），未提供时回退合理默认值。
+#
+# 引用任务 20.1 的各服务 Dockerfile：
+#   backend/Dockerfile、websocket/Dockerfile、scheduler/Dockerfile、frontend/Dockerfile
+
+services:
+  # ==========================================================================
+  # MySQL 8.0 —— 业务数据库（utf8mb4 + 北京时间 +08:00）
+  # ==========================================================================
+  mysql:
+    image: mysql:8.0
+    container_name: pdd_mysql
+    restart: unless-stopped
+    # MySQL 启动参数：北京时间 +08:00（需求 24.8）、字符集 utf8mb4（规范 8）
+    command:
+      - --default-time-zone=+08:00
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      # root 密码与初始库由环境变量注入，未提供时回退默认值（与 common 配置一致）
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-pdd_auto_reply}
+      TZ: Asia/Shanghai
+    ports:
+      # 宿主机端口可经环境变量调整，默认 3306（仅本机调试用，生产可移除映射）
+      - "${MYSQL_HOST_PORT:-3306}:3306"
+    volumes:
+      # 数据持久化（禁止删除数据，规范 11）
+      - mysql_data:/var/lib/mysql
+    networks:
+      - pdd_network
+    healthcheck:
+      # 以 root 账号 ping，确认数据库已可服务
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ==========================================================================
+  # Redis —— 缓存 / 分布式锁
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: pdd_redis
+    restart: unless-stopped
+    # 有密码时以 --requirepass 启动；REDIS_PASSWORD 为空则不启用密码
+    command: >
+      sh -c "if [ -n \"$$REDIS_PASSWORD\" ]; then
+               redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes;
+             else
+               redis-server --appendonly yes;
+             fi"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      TZ: Asia/Shanghai
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pdd_network
+    healthcheck:
+      # 有密码时携带 -a 参数；无密码时该参数为空字符串不影响
+      test: ["CMD-SHELL", "redis-cli ${REDIS_PASSWORD:+-a $REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ==========================================================================
+  # backend —— HTTP API 服务（默认 8089，/health 健康检查）
+  # ==========================================================================
+  backend:
+    build:
+      # 构建上下文为项目根目录（Dockerfile 内同时复制 common 与 backend）
+      context: .
+      dockerfile: backend/Dockerfile
+    image: pdd_backend
+    container_name: pdd_backend
+    restart: unless-stopped
+    # 仅在 mysql/redis 健康后启动（保证依赖顺序）
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      TZ: Asia/Shanghai
+      # —— MySQL（host 用 docker 服务名 mysql，禁止写死 localhost）——
+      MYSQL_HOST: ${MYSQL_HOST:-mysql}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-pdd_auto_reply}
+      # —— Redis（host 用 docker 服务名 redis）——
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      # —— 服务端口 ——
+      BACKEND_WEB_PORT: ${BACKEND_WEB_PORT:-8089}
+      # —— 服务间地址（用 docker 服务名，禁止写死 localhost，需求 25.4）——
+      BACKEND_WEB_SERVICE_URL: ${BACKEND_WEB_SERVICE_URL:-http://backend:8089}
+      WEBSOCKET_SERVICE_URL: ${WEBSOCKET_SERVICE_URL:-http://websocket:8090}
+      SCHEDULER_SERVICE_URL: ${SCHEDULER_SERVICE_URL:-http://scheduler:8091}
+      # —— 安全密钥（生产务必经环境变量注入）——
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-env}
+      DATA_ENCRYPT_KEY: ${DATA_ENCRYPT_KEY:-change-me-data-encrypt-key}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-change-me-internal-service-token}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "${BACKEND_WEB_PORT:-8089}:8089"
+    volumes:
+      # 静态资源 / 上传文件持久化（与各服务共享同一卷）
+      - backend_static:/app/backend/static
+    networks:
+      - pdd_network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8089/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ==========================================================================
+  # websocket —— 长连接服务（默认 8090，含 Playwright 浏览器，/health 健康检查）
+  # ==========================================================================
+  websocket:
+    build:
+      context: .
+      dockerfile: websocket/Dockerfile
+    image: pdd_websocket
+    container_name: pdd_websocket
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # backend 负责建表自检，websocket 待其健康后再启动，避免表缺失
+      backend:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      TZ: Asia/Shanghai
+      MYSQL_HOST: ${MYSQL_HOST:-mysql}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-pdd_auto_reply}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      WEBSOCKET_PORT: ${WEBSOCKET_PORT:-8090}
+      BACKEND_WEB_SERVICE_URL: ${BACKEND_WEB_SERVICE_URL:-http://backend:8089}
+      WEBSOCKET_SERVICE_URL: ${WEBSOCKET_SERVICE_URL:-http://websocket:8090}
+      SCHEDULER_SERVICE_URL: ${SCHEDULER_SERVICE_URL:-http://scheduler:8091}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-env}
+      DATA_ENCRYPT_KEY: ${DATA_ENCRYPT_KEY:-change-me-data-encrypt-key}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-change-me-internal-service-token}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Playwright：账号密码登录默认非无头（需必要时人工验证），经环境变量可调
+      BROWSER_HEADLESS: ${BROWSER_HEADLESS:-false}
+      MAX_CAPTCHA_CONCURRENT: ${MAX_CAPTCHA_CONCURRENT:-1}
+      # Playwright 持久化用户数据目录，须与下方挂载卷一致，确保容器重建后登录态不丢失
+      PLAYWRIGHT_USER_DATA_DIR: ${PLAYWRIGHT_USER_DATA_DIR:-/app/websocket/browser_data}
+    ports:
+      - "${WEBSOCKET_PORT:-8090}:8090"
+    volumes:
+      - backend_static:/app/backend/static
+      # 浏览器持久化数据（Playwright launch_persistent_context）
+      - websocket_browser_data:/app/websocket/browser_data
+    networks:
+      - pdd_network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================================================
+  # scheduler —— 定时任务服务（默认 8091，/health 健康检查）
+  # ==========================================================================
+  scheduler:
+    build:
+      context: .
+      dockerfile: scheduler/Dockerfile
+    image: pdd_scheduler
+    container_name: pdd_scheduler
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      TZ: Asia/Shanghai
+      MYSQL_HOST: ${MYSQL_HOST:-mysql}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-pdd_auto_reply}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      SCHEDULER_PORT: ${SCHEDULER_PORT:-8091}
+      BACKEND_WEB_SERVICE_URL: ${BACKEND_WEB_SERVICE_URL:-http://backend:8089}
+      WEBSOCKET_SERVICE_URL: ${WEBSOCKET_SERVICE_URL:-http://websocket:8090}
+      SCHEDULER_SERVICE_URL: ${SCHEDULER_SERVICE_URL:-http://scheduler:8091}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-env}
+      DATA_ENCRYPT_KEY: ${DATA_ENCRYPT_KEY:-change-me-data-encrypt-key}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "${SCHEDULER_PORT:-8091}:8091"
+    volumes:
+      - backend_static:/app/backend/static
+    networks:
+      - pdd_network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8091/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ==========================================================================
+  # frontend —— Vue 3 构建产物，由 nginx 提供并反向代理后端 API
+  # ==========================================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    image: pdd_frontend
+    container_name: pdd_frontend
+    restart: unless-stopped
+    # 后端健康后再启动，保证 API 反向代理可用
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Shanghai
+      # nginx 反向代理后端地址（用 docker 服务名，禁止写死 localhost，需求 25.4）
+      BACKEND_API_URL: ${BACKEND_API_URL:-http://backend:8089}
+    ports:
+      - "${FRONTEND_HOST_PORT:-80}:80"
+    networks:
+      - pdd_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+# ==============================================================================
+# 命名卷（数据持久化，禁止删除数据 —— 规范 11）
+# ==============================================================================
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  backend_static:
+    driver: local
+  websocket_browser_data:
+    driver: local
+
+# ==============================================================================
+# 自定义桥接网络：服务间经服务名互相解析（禁止写死 localhost）
+# ==============================================================================
+networks:
+  pdd_network:
+    driver: bridge

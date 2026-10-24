@@ -1,0 +1,5 @@
+cryptography==49.0.0
+fastapi==0.139.0
+psycopg[binary]==3.3.2
+qrcode==8.2
+uvicorn[standard]==0.50.0

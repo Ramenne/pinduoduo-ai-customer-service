@@ -1,0 +1,158 @@
+plugins {
+    id "com.android.application"
+}
+
+def configuredCloudBaseUrl = providers.gradleProperty("oinCloudBaseUrl")
+        .orElse(providers.environmentVariable("OIN_CLOUD_BASE_URL"))
+        .getOrElse("").trim()
+while (configuredCloudBaseUrl.endsWith("/")) {
+    configuredCloudBaseUrl = configuredCloudBaseUrl.substring(0, configuredCloudBaseUrl.length() - 1)
+}
+def configuredCloudBaseUsesHttps = configuredCloudBaseUrl.startsWith("https://")
+if (!configuredCloudBaseUsesHttps) {
+    throw new GradleException("Provide the current HTTPS base via -PoinCloudBaseUrl or OIN_CLOUD_BASE_URL")
+}
+def cloudBaseUri = new java.net.URI(configuredCloudBaseUrl)
+if (!cloudBaseUri.host || cloudBaseUri.host.toLowerCase().endsWith(".invalid") ||
+        cloudBaseUri.userInfo || cloudBaseUri.query || cloudBaseUri.fragment) {
+    throw new GradleException("OIN cloud base URL must be a real HTTPS origin/path without credentials/query/fragment")
+}
+def escapedCloudBaseUrl = configuredCloudBaseUrl.replace("\\", "\\\\").replace('"', '\\"')
+def releaseCloudBaseUrl = configuredCloudBaseUrl
+def escapedReleaseCloudBaseUrl = releaseCloudBaseUrl.replace("\\", "\\\\").replace('"', '\\"')
+def releaseDiagnosticEnabled = providers.gradleProperty("oinEnableReleaseDiagnosticBridge")
+        .getOrElse("false")
+        .toBoolean()
+def releaseDiagnosticBindAddress = providers.gradleProperty("oinReleaseDiagnosticBindAddress")
+        .getOrElse("127.0.0.1")
+def releaseLanExposureAcknowledged = providers.gradleProperty("oinAcknowledgeLanDiagnosticExposure")
+        .getOrElse("false")
+        .toBoolean()
+if (!(releaseDiagnosticBindAddress in ["127.0.0.1", "0.0.0.0"])) {
+    throw new GradleException("Release diagnostic bind address must be 127.0.0.1 or 0.0.0.0")
+}
+if (releaseDiagnosticEnabled && releaseDiagnosticBindAddress == "0.0.0.0" &&
+        !releaseLanExposureAcknowledged) {
+    throw new GradleException("LAN diagnostic exposure requires -PoinAcknowledgeLanDiagnosticExposure=true")
+}
+def escapedReleaseDiagnosticBindAddress = releaseDiagnosticBindAddress
+        .replace("\\", "\\\\")
+        .replace('"', '\\"')
+
+// This identity deliberately excludes Activity/UI/adapter code. A UI-only APK release may inherit
+// the last cloud-durability acceptance only when this source-derived identity is unchanged.
+// Any edit to a transport, lease, stop/start, task-result, or process-entry contract changes it
+// automatically and requires the affected background soak again.
+def cloudDurabilityContractFiles = [
+        "src/main/AndroidManifest.xml",
+        "src/main/java/com/feifei/phonebridge/AgentRuntimePreferences.java",
+        "src/main/java/com/feifei/phonebridge/BootReceiver.java",
+        "src/main/java/com/feifei/phonebridge/BoundedIoLane.java",
+        "src/main/java/com/feifei/phonebridge/BoundedReconnectBackoff.java",
+        "src/main/java/com/feifei/phonebridge/ChannelLaneState.java",
+        "src/main/java/com/feifei/phonebridge/CloudApiClient.java",
+        "src/main/java/com/feifei/phonebridge/CloudChannelClient.java",
+        "src/main/java/com/feifei/phonebridge/CloudChannelTiming.java",
+        "src/main/java/com/feifei/phonebridge/CloudConfig.java",
+        "src/main/java/com/feifei/phonebridge/CloudConnectionLifecycle.java",
+        "src/main/java/com/feifei/phonebridge/CloudErrorCatalog.java",
+        "src/main/java/com/feifei/phonebridge/CloudState.java",
+        "src/main/java/com/feifei/phonebridge/ControlActionReceiver.java",
+        "src/main/java/com/feifei/phonebridge/ControlService.java",
+        "src/main/java/com/feifei/phonebridge/DeviceIdentity.java",
+        "src/main/java/com/feifei/phonebridge/EnrollmentProof.java",
+        "src/main/java/com/feifei/phonebridge/IdentityPreflightGate.java",
+        "src/main/java/com/feifei/phonebridge/NetworkCallbackIoLane.java",
+        "src/main/java/com/feifei/phonebridge/NetworkCallbackRegistration.java",
+        "src/main/java/com/feifei/phonebridge/RecoveryAlarmIdentity.java",
+        "src/main/java/com/feifei/phonebridge/RecoveryCoordinator.java",
+        "src/main/java/com/feifei/phonebridge/RecoveryEpisode.java",
+        "src/main/java/com/feifei/phonebridge/RecoveryGuardianReceiver.java",
+        "src/main/java/com/feifei/phonebridge/RecoveryGuardianRetryPolicy.java",
+        "src/main/java/com/feifei/phonebridge/RecoveryLease.java",
+        "src/main/java/com/feifei/phonebridge/RecoveryLeaseStore.java",
+        "src/main/java/com/feifei/phonebridge/ServerActivityWatchdog.java",
+        "src/main/java/com/feifei/phonebridge/ServiceTransportWatchdog.java",
+        "src/main/java/com/feifei/phonebridge/TaskResultLedger.java",
+        "src/main/java/com/feifei/phonebridge/TaskResultStore.java",
+        "src/main/java/com/feifei/phonebridge/TransportAuthProof.java",
+        "src/main/java/com/feifei/phonebridge/TransportEventActor.java",
+        "src/main/java/com/feifei/phonebridge/TransportFailureClassifier.java",
+        "src/main/java/com/feifei/phonebridge/TransportStatePublisher.java"
+].sort()
+def cloudDurabilityDigest = java.security.MessageDigest.getInstance("SHA-256")
+cloudDurabilityDigest.update("oin-cloud-durability-contract-v1\u0000".getBytes("UTF-8"))
+cloudDurabilityContractFiles.each { relativePath ->
+    def contractFile = file(relativePath)
+    if (!contractFile.isFile()) {
+        throw new GradleException("Missing cloud durability contract source: ${relativePath}")
+    }
+    cloudDurabilityDigest.update(relativePath.getBytes("UTF-8"))
+    cloudDurabilityDigest.update([0] as byte[])
+    // Git checkout line endings must not create a different runtime identity for identical code.
+    def normalizedSource = contractFile.getText("UTF-8")
+            .replace("\r\n", "\n")
+            .replace("\r", "\n")
+    cloudDurabilityDigest.update(normalizedSource.getBytes("UTF-8"))
+    cloudDurabilityDigest.update([0] as byte[])
+}
+def cloudDurabilityCompatId = "cloud-durability-v1:" +
+        cloudDurabilityDigest.digest().encodeHex().toString()
+
+android {
+    namespace "com.feifei.phonebridge"
+    compileSdk 35
+    buildToolsVersion "35.0.1"
+
+    defaultConfig {
+        applicationId "com.feifei.phonebridge"
+        testInstrumentationRunner "com.feifei.phonebridge.TaskCenterLaunchInstrumentation"
+        minSdk 28
+        targetSdk 35
+        versionCode 66
+        versionName "0.19.3-v01"
+        buildConfigField "String", "CLOUD_DURABILITY_COMPAT_ID",
+                "\"${cloudDurabilityCompatId}\""
+    }
+
+    testBuildType "release"
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ""
+            buildConfigField "String", "OIN_CLOUD_BASE_URL", "\"${escapedCloudBaseUrl}\""
+            buildConfigField "boolean", "ENABLE_LOCAL_DIAGNOSTIC_BRIDGE", "true"
+            buildConfigField "String", "LOCAL_DIAGNOSTIC_BIND_ADDRESS", '"0.0.0.0"'
+        }
+        release {
+            minifyEnabled false
+            buildConfigField "String", "OIN_CLOUD_BASE_URL", "\"${escapedReleaseCloudBaseUrl}\""
+            buildConfigField "boolean", "ENABLE_LOCAL_DIAGNOSTIC_BRIDGE", releaseDiagnosticEnabled.toString()
+            buildConfigField "String", "LOCAL_DIAGNOSTIC_BIND_ADDRESS", "\"${escapedReleaseDiagnosticBindAddress}\""
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+}
+
+tasks.configureEach { task ->
+    if (task.name == "preReleaseBuild") {
+        task.doFirst {
+            if (!configuredCloudBaseUsesHttps) {
+                throw new GradleException("Release OIN cloud base URL must use HTTPS")
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation "androidx.core:core:1.15.0"
+    implementation "com.squareup.okhttp3:okhttp:4.12.0"
+}

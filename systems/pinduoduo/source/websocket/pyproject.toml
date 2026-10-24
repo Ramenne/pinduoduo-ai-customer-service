@@ -1,0 +1,71 @@
+# pyproject.toml —— websocket 长连接服务依赖与打包配置
+# ====================================================
+# 本文件用途：声明「拼多多自动回复」系统 websocket 服务的依赖与打包元数据。
+# websocket 服务维护与拼多多商家后台的长连接，驱动消息收发、解析、自动回复、
+# AI 回复、账号密码登录（Playwright）等运行时能力。
+#
+# 服务入口统一为本目录下的 main.py（最小入口桩，规范 32），装配逻辑位于 _bootstrap.py。
+# 服务默认端口 8090，经环境变量 WEBSOCKET_PORT 读取；监听地址默认 0.0.0.0，
+# 禁止写死 localhost（规范 21）。
+#
+# 规范 33：打包时易出现「检测到多个顶级目录」错误，故在 [tool.setuptools] 中
+# 显式声明 packages 列表（本服务各包），不依赖自动发现。
+# common 公共库通过 sys.path 共享引用（见 main.py 中的 sys.path 注入），不在此重复打包。
+
+[project]
+name = "pdd-auto-reply-websocket"
+version = "0.1.0"
+description = "拼多多自动回复系统 - websocket 长连接服务（默认端口 8090）"
+requires-python = ">=3.11"
+
+# 运行期依赖：
+# - fastapi / uvicorn[standard]：ASGI 应用与服务器；
+# - websockets：与 wss://m-ws.pinduoduo.com/ 建立长连接；
+# - playwright：账号密码登录（启动 Chromium，含人工验证）；
+# - openai：LLM 兼容客户端（AI 回复引擎）；
+# - jieba：中文分词（知识库检索）；
+# - PyMySQL / SQLAlchemy：MySQL 连接与参数化查询（规范 8/16）；
+# - httpx：服务间 HTTP 调用与拼多多 HTTP 接口请求；
+# - pydantic / pydantic-settings：数据结构校验与环境变量配置加载。
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "websockets>=12.0",
+    "playwright>=1.40.0",
+    "openai>=1.0.0",
+    "jieba>=0.42.1",
+    "PyMySQL>=1.1.0",
+    "SQLAlchemy>=2.0.0",
+    "httpx>=0.25.0",
+    "requests>=2.31.0",
+    "qrcode[pil]>=7.4,<9",
+    "cryptography>=41.0.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+]
+
+# 可选依赖：测试相关（属性测试统一采用 Hypothesis，最少 100 次迭代）。
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0",
+    "hypothesis>=6.90.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+# 显式声明 packages 列表（规范 33）：声明本服务各包，
+# 避免自动发现时报「检测到多个顶级目录」打包错误。
+# common 公共库经 sys.path 共享引用，不在本服务重复声明打包。
+[tool.setuptools]
+packages = [
+    "channel_pdd",
+    "channel_pdd.core",
+    "channel_pdd.api",
+    "engine",
+    "agent",
+    "login",
+    "routes",
+]
+package-dir = { "" = "." }
